@@ -21,7 +21,7 @@ The screen will illuminate during the inital setup and on power up. And then wil
 
 GPIO used are as follows:- 
 
-  4 - DHT11
+  4 - DS18B20
 
   12 - Temperature Up (button connect to ground)
 
