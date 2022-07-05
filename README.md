@@ -37,4 +37,3 @@ GPIO used are as follows:-
   
   
   Online XBM redactor. https://xbm.jazzychad.net
-  5 - SSD1306 SDA_PIN
