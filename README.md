@@ -1,7 +1,7 @@
 ![GitHub All Releases](https://img.shields.io/github/downloads/xrust83/homekit_wifi_thermostat/total)
 ![GitHub Releases](https://img.shields.io/github/downloads/xrust83/homekit_wifi_thermostat/latest/total)
 
-# homekit_wifi_thermostat
+# HomeKit_Thermostat
 
 Thermostat accessory for remote control of central heating.
 You will also need the Eve app to update the firmware, enable settings after a power outage.
