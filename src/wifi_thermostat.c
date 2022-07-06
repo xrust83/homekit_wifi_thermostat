@@ -193,7 +193,6 @@ homekit_characteristic_t target_state        = HOMEKIT_CHARACTERISTIC_( TARGET_H
 homekit_characteristic_t cooling_threshold   = HOMEKIT_CHARACTERISTIC_( COOLING_THRESHOLD_TEMPERATURE, 25, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
 homekit_characteristic_t heating_threshold   = HOMEKIT_CHARACTERISTIC_( HEATING_THRESHOLD_TEMPERATURE, 15, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
 
-
 void display_logo (){
 
    screen = logo;
@@ -625,7 +624,6 @@ void thermostat_init() {
    printf("%s: End, Freep Heap=%d\n\n", __func__, xPortGetFreeHeapSize());
 
 }
-
 
 void accessory_init (void ){
    /* initalise anything you don't want started until wifi and pairing is confirmed */
