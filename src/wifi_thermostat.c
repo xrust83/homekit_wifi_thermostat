@@ -60,7 +60,7 @@
 #define TEMP_DIFF_TRIGGER 0.1
 #define UP_BUTTON_GPIO 12 //D6
 #define DOWN_BUTTON_GPIO 10
-#define RESET_BUTTON_GPIO 0 //D3
+#define SET_BUTTON_GPIO 0 //D3
 #define LED_GPIO 2 //D4
 #define QRCODE_VERSION 2
 #define HEATER_PIN 15 //D8
@@ -462,6 +462,36 @@ void down_button_callback(uint8_t gpio, void* args, const uint8_t param) {
    }
 }
 
+void set_button_callback(uint8_t gpio, void* args, const uint8_t param) {
+
+  switch_screen_on (SCREEN_DELAY); /* ensure the screen is on */
+  printf("Button SET single press\n");
+  {
+
+              uint8_t state = target_state.value.int_value + 1;
+   		switch (state){
+        case 1:
+            //heat
+            state = 1;
+            break;
+            //cool
+        case 2:
+            state = 2;
+            break;
+            //auto
+        case 3:
+            state = 3;
+           break;
+        default:
+            //off
+            state = 0;
+            break;
+        }
+        target_state.value = HOMEKIT_UINT8(state);
+        homekit_characteristic_notify(&target_state, target_state.value);
+		}
+}
+
 void process_setting_update() {
 
    printf("%s: Start - Free Heap %d\n",__func__,  xPortGetFreeHeapSize());
@@ -549,10 +579,10 @@ void temperature_sensor_task(void *_args) {
 homekit_accessory_t *accessories[] = {
    HOMEKIT_ACCESSORY(.id=1, .category=homekit_accessory_category_thermostat, .services=(homekit_service_t*[]) {
        HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]) {
-           &name,
+           HOMEKIT_CHARACTERISTIC(NAME, "THERMOSTAT"),
            &manufacturer,
            &serial,
-           &model,
+           HOMEKIT_CHARACTERISTIC(MODEL, "SSD1306+DS18B20"),
            &revision,
            HOMEKIT_CHARACTERISTIC(IDENTIFY, thermostat_identify),
            NULL
@@ -604,8 +634,8 @@ void thermostat_init() {
    adv_button_create(DOWN_BUTTON_GPIO, true, false);
    adv_button_register_callback_fn(DOWN_BUTTON_GPIO, down_button_callback, SINGLEPRESS_TYPE, NULL, 0);
 
-   adv_button_create(RESET_BUTTON_GPIO, true, false);
-   adv_button_register_callback_fn(RESET_BUTTON_GPIO, reset_button_callback, VERYLONGPRESS_TYPE, NULL, 0);
+   adv_button_create(SET_BUTTON_GPIO, true, false);
+   adv_button_register_callback_fn(SET_BUTTON_GPIO, set_button_callback, SINGLEPRESS_TYPE, NULL, 0);
 
    printf("%s: Buttons Created, Freep Heap=%d\n", __func__, xPortGetFreeHeapSize());
 
