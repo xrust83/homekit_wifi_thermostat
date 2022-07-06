@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 David B Brown (@maccoylton)
+* Copyright 2022 Wadim Korneliuk (@xrust83)
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -13,15 +13,15 @@
 * limitations under the License.
 *
 *
-* EPS8266 HomeKit WIFI Thermostat
+* EPS8266 HomeKit Thermostat
 *
-* Uses a DHT22 (temperature sensor)
+* Uses a DS18B20 (temperature sensor)
 *
 *
 */
 
-#define DEVICE_MANUFACTURER "David B Brown"
-#define DEVICE_NAME "Wifi-Thermostat"
+#define DEVICE_MANUFACTURER "Wadim Korneliuk"
+#define DEVICE_NAME "Thermostat"
 #define DEVICE_MODEL "Basic"
 #define DEVICE_SERIAL "12345678"
 #define FW_VERSION "1.0"
@@ -59,10 +59,12 @@
 #define TEMP_DIFF_NOTIFY_TRIGGER 0.1
 #define TEMP_DIFF_TRIGGER 0.1
 #define UP_BUTTON_GPIO 12 //D6
-#define DOWN_BUTTON_GPIO 13 //D7
+#define DOWN_BUTTON_GPIO 10
 #define RESET_BUTTON_GPIO 0 //D3
 #define LED_GPIO 2 //D4
 #define QRCODE_VERSION 2
+#define HEATER_PIN 15 //D8
+#define COOLER_PIN 13 //D7
 
 int led_off_value=1; /* global varibale to support LEDs set to 0 where the LED is connected to GND, 1 where +3.3v */
 const int status_led_gpio = 2; /*set the gloabl variable for the led to be sued for showing status */
@@ -129,6 +131,21 @@ static enum screen_display screen;
 #define SECOND_TICKS (1000 / portTICK_PERIOD_MS) /* a second in ticks */
 #define SCREEN_DELAY 30000 /* in milliseconds */
 
+void heaterOn() {
+    gpio_write(HEATER_PIN, true);
+}
+
+void heaterOff() {
+    gpio_write(HEATER_PIN, false);
+}
+
+void coolerOn() {
+    gpio_write(COOLER_PIN, true);
+}
+
+void coolerOff() {
+    gpio_write(COOLER_PIN, false);
+}
 
 // I2C
 
@@ -446,7 +463,6 @@ void down_button_callback(uint8_t gpio, void* args, const uint8_t param) {
    }
 }
 
-
 void process_setting_update() {
 
    printf("%s: Start - Free Heap %d\n",__func__,  xPortGetFreeHeapSize());
@@ -458,6 +474,10 @@ void process_setting_update() {
            sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
            homekit_characteristic_notify(&current_state, current_state.value);
            switch_screen_on (SCREEN_DELAY);
+
+           heaterOn();
+           coolerOff();
+
        }
    } else if ((state == 2 && current_temperature.value.float_value > target_temperature.value.float_value) ||
            (state == 3 && current_temperature.value.float_value > cooling_threshold.value.float_value)) {
@@ -466,6 +486,10 @@ void process_setting_update() {
            sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
            homekit_characteristic_notify(&current_state, current_state.value);
            switch_screen_on (SCREEN_DELAY);
+
+           coolerOn();
+           heaterOff();
+
        }
    } else {
        if (current_state.value.int_value != 0) {
@@ -473,6 +497,10 @@ void process_setting_update() {
            sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
            homekit_characteristic_notify(&current_state, current_state.value);
            switch_screen_on (SCREEN_DELAY);
+
+           heaterOff();
+           coolerOff();
+
        }
    }
    printf("%s: End - Free Heap %d\n",__func__,  xPortGetFreeHeapSize());
@@ -486,6 +514,12 @@ void temperature_sensor_task(void *_args) {
    ds18b20_addr_t addrs[1];
    float temperature_value, temp_diff;
    int sensor_count;
+
+   gpio_enable(HEATER_PIN, GPIO_OUTPUT);
+   gpio_enable(COOLER_PIN, GPIO_OUTPUT);
+
+   heaterOff();
+   coolerOff();
 
    while (1) {
      sensor_count = ds18b20_scan_devices(SENSOR_PIN, addrs, 1);
@@ -614,7 +648,6 @@ void accessory_init_not_paired (void) {
 
 }
 
-
 void recover_from_reset (int reason){
    /* called if we restarted abnormally */
    printf("%s: Reason %d, Freep Heap=%d\n", __func__, reason, xPortGetFreeHeapSize());
@@ -626,7 +659,6 @@ void recover_from_reset (int reason){
 
 }
 
-
 void save_characteristics ( ){
    /* called by save timer*/
    printf ("%s:\n", __func__);
@@ -634,13 +666,12 @@ void save_characteristics ( ){
    if ( preserve_state.value.bool_value == true){
        printf ("%s:Preserving state\n", __func__);
        save_characteristic_to_flash (&target_temperature, target_temperature.value);
-       save_characteristic_to_flash (&current_state, current_state.value);
+       save_characteristic_to_flash (&target_state, target_state.value);
        save_characteristic_to_flash(&wifi_check_interval, wifi_check_interval.value);
    } else {
        printf ("%s:Not preserving state\n", __func__);
    }
 }
-
 
 void load_settings_from_flash (){
 
@@ -652,7 +683,6 @@ void load_settings_from_flash (){
    printf("%s: End, Freep Heap=%d\n\n", __func__, xPortGetFreeHeapSize());
 
 }
-
 
 homekit_server_config_t config = {
    .accessories = accessories,
