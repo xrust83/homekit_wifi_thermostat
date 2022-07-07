@@ -22,13 +22,13 @@ GPIO used are as follows:-
 
   12 - Temperature Up (button connect to ground)
 
-  10 - Temperature Down (button conected to ground) 
+  0 - Temperature Down (button conected to ground) 
   
   15 - Heater Relay Pin
   
   13 - Cooler Relay Pin
   
-  0 - Set Button (switch connected to ground) 
+  0 and 12 - Set Button (switch connected to ground) 
   
   2 - LED 
   
