@@ -28,7 +28,7 @@ GPIO used are as follows:-
   
   13 - Cooler Relay Pin
   
-  0 and 12 - Set Button (switch connected to ground) 
+  10 - Set Button (switch connected to ground) 
   
   2 - LED 
   
