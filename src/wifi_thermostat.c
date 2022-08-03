@@ -59,12 +59,13 @@
 #define TEMP_DIFF_NOTIFY_TRIGGER 0.1
 #define TEMP_DIFF_TRIGGER 0.1
 #define UP_BUTTON_GPIO 12 //D6
-#define DOWN_BUTTON_GPIO 10
-#define SET_BUTTON_GPIO 0 //D3
+#define DOWN_BUTTON_GPIO 0 //D3
+#define SET_BUTTON_GPIO 10
 #define LED_GPIO 2 //D4
 #define QRCODE_VERSION 2
 #define HEATER_PIN 15 //D8
 #define COOLER_PIN 13 //D7
+uint16_t debounce_time = 60;
 
 int led_off_value=1; /* global varibale to support LEDs set to 0 where the LED is connected to GND, 1 where +3.3v */
 const int status_led_gpio = 2; /*set the gloabl variable for the led to be sued for showing status */
@@ -94,33 +95,35 @@ const int status_led_gpio = 2; /*set the gloabl variable for the led to be sued 
 #define DISPLAY_HEIGHT 64
 
 #ifdef I2C_CONNECTION
-   #define PROTOCOL SSD1306_PROTO_I2C
-   #define ADDR     SSD1306_I2C_ADDR_0
-   #define I2C_BUS  0
-   #define SCL_PIN  14 //D5
-   #define SDA_PIN  5 //D1
+    #define PROTOCOL SSD1306_PROTO_I2C
+    #define ADDR     SSD1306_I2C_ADDR_0
+    #define I2C_BUS  0
+    #define SCL_PIN  14
+    #define SDA_PIN  5
 #else
-   #define PROTOCOL SSD1306_PROTO_SPI4
-   #define CS_PIN   5
-   #define DC_PIN   4
+    #define PROTOCOL SSD1306_PROTO_SPI4
+    #define CS_PIN   5
+    #define DC_PIN   4
 #endif
 
 #define DEFAULT_FONT FONT_FACE_TERMINUS_16X32_ISO8859_1
 
 /* Declare device descriptor */
 static const ssd1306_t display = {
-   .protocol = PROTOCOL,
-   .screen = SSD1306_SCREEN,
+    .protocol = PROTOCOL,
+    .screen = SH1106_SCREEN,
+    //.screen = SSD1306_SCREEN,
 #ifdef I2C_CONNECTION
 .i2c_dev.bus      = I2C_BUS,
 .i2c_dev.addr     = ADDR,
 #else
-   .cs_pin   = CS_PIN,
-   .dc_pin   = DC_PIN,
+    .cs_pin   = CS_PIN,
+    .dc_pin   = DC_PIN,
 #endif
-   .width    = DISPLAY_WIDTH,
-   .height   = DISPLAY_HEIGHT
+    .width    = DISPLAY_WIDTH,
+    .height   = DISPLAY_HEIGHT
 };
+
 
 /* Local frame display_buffer */
 static uint8_t display_buffer[DISPLAY_WIDTH * DISPLAY_HEIGHT / 8];
@@ -214,9 +217,16 @@ static void ssd1306_task(void *pvParameters)
    char target_temp_string[5];
    char mode_string[5];
    char temperature_string[5];
+   char target_string[5];
 
    vTaskDelay(SECOND_TICKS);
    ssd1306_set_whole_display_lighting(&display, false);
+
+   ssd1306_set_scan_direction_fwd( &display, true );
+   ssd1306_set_segment_remapping_enabled( &display, false );
+
+   //ssd1306_set_scan_direction_fwd( &display, true );
+   //ssd1306_set_segment_remapping_enabled( &display, true );
 
    display_logo ();
    vTaskDelay(SECOND_TICKS*5);
@@ -239,45 +249,70 @@ static void ssd1306_task(void *pvParameters)
            }
 
            sprintf(target_temp_string, "%2.1f", (float)target_temperature.value.float_value);
-           switch( (int)current_state.value.int_value)
+           switch( (int)target_state.value.int_value)
            {
                case 0:
-                   sprintf(mode_string, "OFF ");
+                   sprintf(target_string, " OFF");
                    break;
                case 1:
-                   sprintf(mode_string, "HEAT");
+                   sprintf(target_string, "HEAT");
                    break;
                case 2:
-                   sprintf(mode_string, "COOL");
+                   sprintf(target_string, "COOL");
                    break;
                case 3:
-                   sprintf(mode_string, "AUTO");
+                   sprintf(target_string, "AUTO");
                    break;
                default:
-                   sprintf(mode_string, "?   ");
+                   sprintf(target_string, "?   ");
            }
+
 
            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 5, 2, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                printf("Error printing target temp\n");
            }
 
-           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 70, 2, mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
+           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 70, 2, target_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
                printf("Error printing mode\n");
            }
 
            sprintf(temperature_string, "%2.1f", (float)current_temperature.value.float_value);
-           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 30, 41 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+
+           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 25, 35 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                printf("Error printing temperature\n");
            }
+
+           //sprintf(target_state_string, "%g", (float)target_state.value.int_value);  //
+           switch( (int)current_state.value.int_value)
+           {
+               case 0:
+                   sprintf(mode_string, "    Off");
+                   break;
+               case 1:
+                   sprintf(mode_string, "Heating");
+                   break;
+               case 2:
+                   sprintf(mode_string, "Cooling");
+                   break;
+               case 3:
+                   sprintf(mode_string, "   Auto");
+                   break;
+               default:
+                   sprintf(mode_string, "?   ");
+           }
+
+           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 30, 50 , mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+                printf("Error printing state\n");
+            }
 
            if (ssd1306_load_frame_buffer(&display, display_buffer))
                goto error_loop;
        }
-       vTaskDelay(SECOND_TICKS/3);
+       vTaskDelay(SECOND_TICKS/4);
    }
 
 error_loop:
-   printf("%s: error while loading framebuffer into SSD1306\n", __func__);
+   printf("%s: error while loading framebuffer into ssd1306\n", __func__);
    for (;;) {
        vTaskDelay(2 * SECOND_TICKS);
        printf("%s: error loop\n", __FUNCTION__);
@@ -320,12 +355,17 @@ void screen_init(void) {
 #endif
 
    while (ssd1306_init(&display) != 0) {
-       printf("%s: failed to init SSD1306 lcd\n", __func__);
+       printf("%s: failed to init ssd1306 lcd\n", __func__);
        vTaskDelay(SECOND_TICKS);
    }
    ssd1306_set_whole_display_lighting(&display, false);
-   ssd1306_set_scan_direction_fwd(&display, false);
-   ssd1306_set_segment_remapping_enabled(&display, true);
+   ssd1306_set_scan_direction_fwd( &display, true );
+   ssd1306_set_segment_remapping_enabled( &display, false );
+
+   //ssd1306_set_scan_direction_fwd(&display, true);
+   // ssd1306_set_segment_remapping_enabled(&display, true);
+
+
    printf("%s: end, Free Heap %d\n", __func__, xPortGetFreeHeapSize());
 }
 
@@ -438,9 +478,11 @@ void on_update(homekit_characteristic_t *ch, homekit_value_t value, void *contex
    sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
 }
 
+
+
 void up_button_callback(uint8_t gpio, void* args, const uint8_t param) {
 
-   switch_screen_on (SCREEN_DELAY); /* ensure the screen is on */
+   switch_screen_on (SCREEN_DELAY); // ensure the screen is on
    printf("Button UP single press\n");
    if (target_temperature.value.float_value <= (target_temperature.max_value[0] - 0.5))
    {
@@ -565,8 +607,6 @@ void temperature_sensor_task(void *_args) {
          if (temp_diff > TEMP_DIFF_TRIGGER) {
              process_setting_update();
          }
-
-
      } else {
        printf("%s: Couldnt read data from sensor\n", __func__);
        led_code(LED_GPIO, SENSOR_ERROR);
@@ -579,10 +619,10 @@ void temperature_sensor_task(void *_args) {
 homekit_accessory_t *accessories[] = {
    HOMEKIT_ACCESSORY(.id=1, .category=homekit_accessory_category_thermostat, .services=(homekit_service_t*[]) {
        HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]) {
-           HOMEKIT_CHARACTERISTIC(NAME, "THERMOSTAT"),
+           HOMEKIT_CHARACTERISTIC(NAME, "HomeKit Thermostat"),
            &manufacturer,
            &serial,
-           HOMEKIT_CHARACTERISTIC(MODEL, "SSD1306+DS18B20"),
+           HOMEKIT_CHARACTERISTIC(MODEL, "SSD1306+DS18B20 Thermostat "),
            &revision,
            HOMEKIT_CHARACTERISTIC(IDENTIFY, thermostat_identify),
            NULL
@@ -619,7 +659,7 @@ void thermostat_init() {
    printf("%s: Start, Freep Heap=%d\n", __func__, xPortGetFreeHeapSize());
 
    while (ssd1306_init(&display) != 0) {
-       printf("%s: failed to init SSD1306 lcd\n", __func__);
+       printf("%s: failed to init ssd1306 lcd\n", __func__);
        vTaskDelay(SECOND_TICKS);
    }
    printf("%s: Display initailised, Freep Heap=%d\n", __func__, xPortGetFreeHeapSize());
