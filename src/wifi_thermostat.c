@@ -225,9 +225,6 @@ static void ssd1306_task(void *pvParameters)
    ssd1306_set_scan_direction_fwd( &display, true );
    ssd1306_set_segment_remapping_enabled( &display, false );
 
-   //ssd1306_set_scan_direction_fwd( &display, true );
-   //ssd1306_set_segment_remapping_enabled( &display, true );
-
    display_logo ();
    vTaskDelay(SECOND_TICKS*5);
 
@@ -268,17 +265,17 @@ static void ssd1306_task(void *pvParameters)
            }
 
 
-           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 5, 2, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 3, 2, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                printf("Error printing target temp\n");
            }
 
-           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 70, 2, target_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
+           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 72, 2, target_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
                printf("Error printing mode\n");
            }
 
            sprintf(temperature_string, "%2.1f", (float)current_temperature.value.float_value);
 
-           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 25, 35 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 22, 50 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                printf("Error printing temperature\n");
            }
 
@@ -301,7 +298,7 @@ static void ssd1306_task(void *pvParameters)
                    sprintf(mode_string, "?   ");
            }
 
-           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 30, 50 , mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+           if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 30, 30 , mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing state\n");
             }
 
@@ -361,9 +358,6 @@ void screen_init(void) {
    ssd1306_set_whole_display_lighting(&display, false);
    ssd1306_set_scan_direction_fwd( &display, true );
    ssd1306_set_segment_remapping_enabled( &display, false );
-
-   //ssd1306_set_scan_direction_fwd(&display, true);
-   // ssd1306_set_segment_remapping_enabled(&display, true);
 
 
    printf("%s: end, Free Heap %d\n", __func__, xPortGetFreeHeapSize());
@@ -477,8 +471,6 @@ void on_update(homekit_characteristic_t *ch, homekit_value_t value, void *contex
    process_setting_update();
    sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
 }
-
-
 
 void up_button_callback(uint8_t gpio, void* args, const uint8_t param) {
 
