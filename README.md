@@ -18,23 +18,17 @@ The screen will light up during the initial setup and when the power is turned o
 
 GPIO used are as follows:- 
 
-  4 - DS18B20
+  14 - Si7021
 
   12 - Temperature Up (button connect to ground)
 
-  0 - Temperature Down (button conected to ground) 
-  
-  15 - Heater Relay Pin
-  
-  13 - Cooler Relay Pin
-  
-  10 - Set Button (switch connected to ground) 
+  13 - Temperature Down (button conected to ground) 
   
   2 - LED 
   
-  14 - SH1106 SCK_PIN
+  5 - SH1106 SCL_PIN
   
-  5 - SH1106 SDA_PIN
+  4 - SH1106 SDA_PIN
   
   
   Online XBM redactor. https://xbm.jazzychad.net
