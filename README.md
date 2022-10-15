@@ -1,12 +1,12 @@
 ![GitHub All Releases](https://img.shields.io/github/downloads/xrust83/homekit_wifi_thermostat/total)
 ![GitHub Releases](https://img.shields.io/github/downloads/xrust83/homekit_wifi_thermostat/latest/total)
 
-# HomeKit_Thermostat
+# HomeKit_WiFi_Thermostat
 
 Thermostat accessory for remote control of central heating.
 You will also need the Eve app to update the firmware, enable settings after a power outage.
 
-It uses DS18B20 to measure temperature and sets current_heating_cooling_status based on other accessory settings.
+It uses Si7021 to measure temperature and sets current_heating_cooling_status based on other accessory settings.
 
 For example, when the thermostat sets current_heating_cooling_status to heating/off, use EVE to activate the switch accessory.
 on/off respectively. You can also set timer based events in Eve to control the target_heating_cooling_status, in others
