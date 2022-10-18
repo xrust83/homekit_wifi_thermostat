@@ -1,8 +1,6 @@
 PROGRAM = main
 
 EXTRA_COMPONENTS = \
-  extras/ds18b20 \
-  extras/onewire \
 	extras/http-parser \
 	extras/rboot-ota \
         extras/dhcpserver \
@@ -13,6 +11,7 @@ EXTRA_COMPONENTS = \
 	$(abspath ../components/esp-cjson) \
 	$(abspath ../components/esp-homekit)\
         $(abspath ../components/esp-wifi-config)\
+				$(abspath ../components/new_dht)\
         $(abspath ../components/UDPlogger)\
 	$(abspath ../components/esp-qrcode)\
 	$(abspath ../components/esp-adv-button)\
