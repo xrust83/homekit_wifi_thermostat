@@ -12,17 +12,14 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 *
-*
 * EPS8266 HomeKit Thermostat
 *
-* Uses a Si7021 (temperature sensor)
-*
-*
+* Uses a Si7021 (Temperature sensor)
 */
 
-#define DEVICE_MANUFACTURER "David B Brown"
-#define DEVICE_NAME "Wifi-Thermostat"
-#define DEVICE_MODEL "Basic"
+#define DEVICE_MANUFACTURER "XrustHome"
+#define DEVICE_NAME "Thermostat"
+#define DEVICE_MODEL "WiFi"
 #define DEVICE_SERIAL "12345678"
 #define FW_VERSION "1.0"
 
@@ -37,6 +34,7 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <sysparam.h>
+//#include <math.h>
 
 
 #include <ssd1306/ssd1306.h>
@@ -46,7 +44,7 @@
 #include <qrcode.h>
 //#include "wifi.h"
 
-#include <dht/dht.h>
+#include <dht.h>
 
 #include <wifi_thermostat.h>
 #include <adv_button.h>
@@ -57,14 +55,15 @@
 
 #define TEMPERATURE_SENSOR_PIN 14
 #define TEMPERATURE_POLL_PERIOD 3000
-#define TEMP_DIFF_NOTIFY_TRIGGER 0.2
-#define HUMIDITY_DIFF_TRIGGER_VALUE 2
-#define TEMP_DIFF_TRIGGER 0.5
+#define TEMP_DIFF_NOTIFY_TRIGGER 0.1
+#define HUMIDITY_DIFF_TRIGGER_VALUE 0.1
+#define TEMP_DIFF_TRIGGER 0.1
 #define UP_BUTTON_GPIO 12
 #define DOWN_BUTTON_GPIO 13
 #define RESET_BUTTON_GPIO 0
 #define LED_GPIO 2
 #define QRCODE_VERSION 2
+uint16_t debounce_time = 60;
 
 int led_off_value=1; /* global varibale to support LEDs set to 0 where the LED is connected to GND, 1 where +3.3v */
 const int status_led_gpio = 2; /*set the gloabl variable for the led to be sued for showing status */
@@ -135,7 +134,6 @@ static enum screen_display screen;
 // I2C
 
 ETSTimer screen_off_timer;
-
 #include <ota-api.h>
 homekit_characteristic_t wifi_reset   = HOMEKIT_CHARACTERISTIC_(CUSTOM_WIFI_RESET, false, .setter=wifi_reset_set);
 homekit_characteristic_t wifi_check_interval   = HOMEKIT_CHARACTERISTIC_(CUSTOM_WIFI_CHECK_INTERVAL, 10, .setter=wifi_check_interval_set);
@@ -144,7 +142,6 @@ homekit_characteristic_t task_stats   = HOMEKIT_CHARACTERISTIC_(CUSTOM_TASK_STAT
 homekit_characteristic_t ota_beta     = HOMEKIT_CHARACTERISTIC_(CUSTOM_OTA_BETA, false, .setter=ota_beta_set);
 homekit_characteristic_t lcm_beta    = HOMEKIT_CHARACTERISTIC_(CUSTOM_LCM_BETA, false, .setter=lcm_beta_set);
 homekit_characteristic_t preserve_state   = HOMEKIT_CHARACTERISTIC_(CUSTOM_PRESERVE_STATE, true, .setter=preserve_state_set);
-
 homekit_characteristic_t ota_trigger  = API_OTA_TRIGGER;
 homekit_characteristic_t name         = HOMEKIT_CHARACTERISTIC_(NAME, DEVICE_NAME);
 homekit_characteristic_t manufacturer = HOMEKIT_CHARACTERISTIC_(MANUFACTURER,  DEVICE_MANUFACTURER);
@@ -153,13 +150,13 @@ homekit_characteristic_t model        = HOMEKIT_CHARACTERISTIC_(MODEL,         D
 homekit_characteristic_t revision     = HOMEKIT_CHARACTERISTIC_(FIRMWARE_REVISION,  FW_VERSION);
 
 
-void switch_screen_on (int time_to_be_on);
+void switch_screen_on (uint32_t time_to_be_on);
 void display_logo ();
 
 void thermostat_identify_task(void *_args) {
 
     led_code(LED_GPIO, IDENTIFY_ACCESSORY);
-    switch_screen_on (10*SECOND_TICKS);
+    switch_screen_on (30*SECOND_TICKS);
     display_logo ();
     vTaskDelete(NULL);
 }
@@ -181,7 +178,6 @@ homekit_characteristic_t target_state        = HOMEKIT_CHARACTERISTIC_( TARGET_H
 homekit_characteristic_t cooling_threshold   = HOMEKIT_CHARACTERISTIC_( COOLING_THRESHOLD_TEMPERATURE, 25, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
 homekit_characteristic_t heating_threshold   = HOMEKIT_CHARACTERISTIC_( HEATING_THRESHOLD_TEMPERATURE, 15, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
 homekit_characteristic_t current_humidity    = HOMEKIT_CHARACTERISTIC_( CURRENT_RELATIVE_HUMIDITY, 0 );
-
 
 void display_logo (){
 
@@ -231,40 +227,52 @@ static void ssd1306_task(void *pvParameters)
             }
 
             sprintf(target_temp_string, "%2.1f", (float)target_temperature.value.float_value);
-            switch( (int)current_state.value.int_value)
+            switch( (int)target_state.value.int_value)
             {
                 case 0:
-                    sprintf(mode_string, "OFF ");
+                    sprintf(mode_string, " OFF");
                     break;
                 case 1:
                     sprintf(mode_string, "HEAT");
-                    break;
-                case 2:
-                    sprintf(mode_string, "COOL");
-                    break;
-                case 3:
-                    sprintf(mode_string, "AUTO");
                     break;
                 default:
                     sprintf(mode_string, "?   ");
             }
 
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 5, 2, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 3, 2, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing target temp\n");
             }
 
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 70, 2, mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 72, 2, mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
                 printf("Error printing mode\n");
             }
 
             sprintf(temperature_string, "%2.1f", (float)current_temperature.value.float_value);
             sprintf(humidity_string, "%2.1f", (float)current_humidity.value.float_value);
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 30, 41 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 18, 50 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing temperature\n");
             }
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 92, 41 , humidity_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 72, 50 , humidity_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing humidity\n");
             }
+
+
+            //sprintf(target_state_string, "%g", (float)target_state.value.int_value);  //
+            switch( (int)current_state.value.int_value)
+            {
+                case 0:
+                    sprintf(mode_string, "  Off  ");
+                    break;
+                case 1:
+                    sprintf(mode_string, "Heating");
+                    break;
+                default:
+                    sprintf(mode_string, "?   ");
+            }
+
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 37, 30 , mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+                 printf("Error printing state\n");
+             }
 
 
             if (ssd1306_load_frame_buffer(&display, display_buffer))
@@ -285,6 +293,7 @@ error_loop:
 
 void switch_screen_off (){
 
+    printf("%s:", __func__);
     screen_on = false;
     ssd1306_display_on(&display, false);
     sdk_os_timer_disarm (&screen_off_timer ); /* esnuer the screen off timer is disabled */
@@ -292,11 +301,14 @@ void switch_screen_off (){
 }
 
 
-void switch_screen_on (int time_to_be_on){
+void switch_screen_on (uint32_t time_to_be_on){
 
+    printf("%s:", __func__);
     screen_on = true;
     ssd1306_display_on(&display, true);
-    sdk_os_timer_arm(&screen_off_timer, time_to_be_on, 0);
+    if (time_to_be_on > 0 ) { /* we call this with 0 when we are showing the homekit qr code, so no timeout */
+        sdk_os_timer_arm(&screen_off_timer, time_to_be_on, 0);
+    }
     printf("Screen turned on and off timer set to %d\n", time_to_be_on);
 }
 
@@ -327,7 +339,7 @@ void screen_init(void)
     ssd1306_set_whole_display_lighting(&display, false);
     ssd1306_set_scan_direction_fwd(&display, false);
     ssd1306_set_segment_remapping_enabled(&display, true);
-    sdk_os_timer_setfn(&screen_off_timer, screen_off_timer_fn, NULL);
+ //   sdk_os_timer_setfn(&screen_off_timer, screen_off_timer_fn, NULL);
     printf("%s: end, Free Heap %d\n", __func__, xPortGetFreeHeapSize());
 
 }
@@ -549,13 +561,14 @@ void temperature_sensor_task(void *_args) {
 }
 
 
+
 homekit_accessory_t *accessories[] = {
     HOMEKIT_ACCESSORY(.id=1, .category=homekit_accessory_category_thermostat, .services=(homekit_service_t*[]) {
         HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]) {
-            &name,
-            &manufacturer,
+            HOMEKIT_CHARACTERISTIC(NAME, "HomeKit Thermostat"),
+            HOMEKIT_CHARACTERISTIC(MANUFACTURER, " XrustHome"),
             &serial,
-            &model,
+            HOMEKIT_CHARACTERISTIC(MODEL, "WiFi Thermostat"),
             &revision,
             HOMEKIT_CHARACTERISTIC(IDENTIFY, thermostat_identify),
             NULL
@@ -690,12 +703,14 @@ void load_settings_from_flash (){
 
 homekit_server_config_t config = {
     .accessories = accessories,
-    .password = "111-11-111",
-    .setupId = "1234",
+    .password = "021-82-017",
+    .setupId = "FEXT",
     .on_event = on_homekit_event
 };
 
 void user_init(void) {
+
+    sdk_os_timer_setfn(&screen_off_timer, screen_off_timer_fn, NULL);
 
     standard_init (&name, &manufacturer, &model, &serial, &revision);
 
