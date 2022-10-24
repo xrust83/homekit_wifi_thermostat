@@ -24,6 +24,10 @@ GPIO used are as follows:-
 
   13 - Temperature Down (button conected to ground) 
   
+  0 - Set (button conected to ground)
+  
+  15 - Heating LED (conected to ground, resistor 1 kOm) 
+  
   2 - LED 
   
   5 - SH1106 SCL_PIN
