@@ -36,7 +36,6 @@
 #include <sysparam.h>
 //#include <math.h>
 
-
 #include <ssd1306/ssd1306.h>
 
 #include <homekit/homekit.h>
@@ -45,7 +44,6 @@
 //#include "wifi.h"
 
 #include <dht.h>
-
 #include <wifi_thermostat.h>
 #include <adv_button.h>
 #include <led_codes.h>
@@ -54,13 +52,15 @@
 
 
 #define TEMPERATURE_SENSOR_PIN 14
+#define DEVICE_NUMBER 2
 #define TEMPERATURE_POLL_PERIOD 3000
 #define TEMP_DIFF_NOTIFY_TRIGGER 0.1
 #define HUMIDITY_DIFF_TRIGGER_VALUE 0.1
 #define TEMP_DIFF_TRIGGER 0.1
 #define UP_BUTTON_GPIO 12
 #define DOWN_BUTTON_GPIO 13
-#define RESET_BUTTON_GPIO 0
+#define SET_BUTTON_GPIO 0
+#define HEATER_LED_PIN 15
 #define LED_GPIO 2
 #define QRCODE_VERSION 2
 uint16_t debounce_time = 60;
@@ -130,6 +130,14 @@ static enum screen_display screen;
 #define SECOND_TICKS (1000 / portTICK_PERIOD_MS) /* a second in ticks */
 #define SCREEN_DELAY 10000 /* in milliseconds */
 
+
+void heaterOn() {
+    gpio_write(HEATER_LED_PIN, true);
+}
+
+void heaterOff() {
+    gpio_write(HEATER_LED_PIN, false);
+}
 
 // I2C
 
@@ -235,15 +243,21 @@ static void ssd1306_task(void *pvParameters)
                 case 1:
                     sprintf(mode_string, "HEAT");
                     break;
+                case 2:
+                    sprintf(mode_string, "COOL");
+                    break;
+                case 3:
+                    sprintf(mode_string, "AUTO");
+                    break;
                 default:
                     sprintf(mode_string, "?   ");
             }
 
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 3, 2, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 3, 1, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing target temp\n");
             }
 
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 72, 2, mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 72, 1, mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1 ){
                 printf("Error printing mode\n");
             }
 
@@ -266,11 +280,17 @@ static void ssd1306_task(void *pvParameters)
                 case 1:
                     sprintf(mode_string, "Heating");
                     break;
+                case 2:
+                    sprintf(mode_string, "Cooling");
+                    break;
+                case 3:
+                    sprintf(mode_string, "  Auto  ");
+                    break;
                 default:
                     sprintf(mode_string, "?   ");
             }
 
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 37, 30 , mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 37, 29 , mode_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                  printf("Error printing state\n");
              }
 
@@ -483,6 +503,35 @@ void down_button_callback(uint8_t gpio, void* args, const uint8_t param) {
     }
 }
 
+void set_button_callback(uint8_t gpio, void* args, const uint8_t param) {
+
+  switch_screen_on (SCREEN_DELAY); /* ensure the screen is on */
+  printf("Button SET single press\n");
+  {
+
+              uint8_t state = target_state.value.int_value + 1;
+   		switch (state){
+        case 1:
+            //heat
+            state = 1;
+            break;
+            //cool
+        case 2:
+            state = 2;
+            break;
+            //auto
+        case 3:
+            state = 3;
+           break;
+        default:
+            //off
+            state = 0;
+            break;
+        }
+        target_state.value = HOMEKIT_UINT8(state);
+        homekit_characteristic_notify(&target_state, target_state.value);
+		}
+}
 
 void process_setting_update() {
 
@@ -495,6 +544,8 @@ void process_setting_update() {
             sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
             homekit_characteristic_notify(&current_state, current_state.value);
             switch_screen_on (SCREEN_DELAY);
+
+            heaterOn();
         }
     } else if ((state == 2 && current_temperature.value.float_value > target_temperature.value.float_value) ||
             (state == 3 && current_temperature.value.float_value > cooling_threshold.value.float_value)) {
@@ -503,6 +554,8 @@ void process_setting_update() {
             sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
             homekit_characteristic_notify(&current_state, current_state.value);
             switch_screen_on (SCREEN_DELAY);
+
+            heaterOff();
         }
     } else {
         if (current_state.value.int_value != 0) {
@@ -510,6 +563,8 @@ void process_setting_update() {
             sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
             homekit_characteristic_notify(&current_state, current_state.value);
             switch_screen_on (SCREEN_DELAY);
+
+            heaterOff();
         }
     }
     printf("%s: End - Free Heap %d\n",__func__,  xPortGetFreeHeapSize());
@@ -522,6 +577,8 @@ void temperature_sensor_task(void *_args) {
 
     float humidity_value, temperature_value, temp_diff, humidity_diff;
     bool success = false;
+
+    gpio_enable(HEATER_LED_PIN, GPIO_OUTPUT);
 
     while (1) {
         success = dht_read_float_data(
@@ -618,8 +675,11 @@ void thermostat_init() {
     adv_button_create(DOWN_BUTTON_GPIO, true, false);
     adv_button_register_callback_fn(DOWN_BUTTON_GPIO, down_button_callback, SINGLEPRESS_TYPE, NULL, 0);
 
-    adv_button_create(RESET_BUTTON_GPIO, true, false);
-    adv_button_register_callback_fn(RESET_BUTTON_GPIO, reset_button_callback, VERYLONGPRESS_TYPE, NULL, 0);
+    adv_button_create(SET_BUTTON_GPIO, true, false);
+    adv_button_register_callback_fn(SET_BUTTON_GPIO, set_button_callback, SINGLEPRESS_TYPE, NULL, 0);
+
+    adv_button_create(SET_BUTTON_GPIO, true, false);
+    adv_button_register_callback_fn(SET_BUTTON_GPIO, set_button_callback, VERYLONGPRESS_TYPE, NULL, 0);
 
     printf("%s: Buttons Created, Freep Heap=%d\n", __func__, xPortGetFreeHeapSize());
 
@@ -682,7 +742,7 @@ void save_characteristics ( ){
         printf ("%s:Preserving state\n", __func__);
         save_characteristic_to_flash (&target_temperature, target_temperature.value);
         save_characteristic_to_flash (&current_state, current_state.value);
-        save_characteristic_to_flash(&wifi_check_interval, wifi_check_interval.value);
+        save_characteristic_to_flash (&wifi_check_interval, wifi_check_interval.value);
     } else {
         printf ("%s:Not preserving state\n", __func__);
     }
