@@ -21,7 +21,7 @@
 #define DEVICE_NAME "Thermostat"
 #define DEVICE_MODEL "WiFi"
 #define DEVICE_SERIAL "12345678"
-#define FW_VERSION "1.0"
+#define FW_VERSION "1.0.0"
 
 #include <stdio.h>
 #include <espressif/esp_wifi.h>
@@ -52,7 +52,7 @@
 
 
 #define TEMPERATURE_SENSOR_PIN 14
-#define DEVICE_NUMBER 2
+//#define DEVICE_NUMBER 2
 #define TEMPERATURE_POLL_PERIOD 3000
 #define TEMP_DIFF_NOTIFY_TRIGGER 0.1
 #define HUMIDITY_DIFF_TRIGGER_VALUE 0.1
@@ -179,12 +179,14 @@ void on_update(homekit_characteristic_t *ch, homekit_value_t value, void *contex
 void process_setting_update();
 
 homekit_characteristic_t current_temperature = HOMEKIT_CHARACTERISTIC_( CURRENT_TEMPERATURE, 0 );
-homekit_characteristic_t target_temperature  = HOMEKIT_CHARACTERISTIC_( TARGET_TEMPERATURE, 22,.callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update));
+homekit_characteristic_t target_temperature  = HOMEKIT_CHARACTERISTIC_( TARGET_TEMPERATURE, 22, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update));
 homekit_characteristic_t units               = HOMEKIT_CHARACTERISTIC_( TEMPERATURE_DISPLAY_UNITS, 0 );
-homekit_characteristic_t current_state       = HOMEKIT_CHARACTERISTIC_( CURRENT_HEATING_COOLING_STATE, 0 );
-homekit_characteristic_t target_state        = HOMEKIT_CHARACTERISTIC_( TARGET_HEATING_COOLING_STATE, 0, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
-homekit_characteristic_t cooling_threshold   = HOMEKIT_CHARACTERISTIC_( COOLING_THRESHOLD_TEMPERATURE, 25, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
-homekit_characteristic_t heating_threshold   = HOMEKIT_CHARACTERISTIC_( HEATING_THRESHOLD_TEMPERATURE, 15, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
+//homekit_characteristic_t current_state       = HOMEKIT_CHARACTERISTIC_( CURRENT_HEATING_COOLING_STATE, 0 );
+//homekit_characteristic_t target_state        = HOMEKIT_CHARACTERISTIC_( TARGET_HEATING_COOLING_STATE, 0, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update) );
+homekit_characteristic_t current_state       = HOMEKIT_CHARACTERISTIC_( CURRENT_HEATING_COOLING_STATE, 0, .valid_values={.count=2, .values=(uint8_t[]) {0, 1}}); // Only OFF/HEAT state
+homekit_characteristic_t target_state        = HOMEKIT_CHARACTERISTIC_( TARGET_HEATING_COOLING_STATE, 0, .valid_values={.count=2, .values=(uint8_t[]) {0, 1}}, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update)); // Only OFF/HEAT state
+homekit_characteristic_t cooling_threshold   = HOMEKIT_CHARACTERISTIC_( COOLING_THRESHOLD_TEMPERATURE, 25, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update));
+homekit_characteristic_t heating_threshold   = HOMEKIT_CHARACTERISTIC_( HEATING_THRESHOLD_TEMPERATURE, 15, .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(on_update));
 homekit_characteristic_t current_humidity    = HOMEKIT_CHARACTERISTIC_( CURRENT_RELATIVE_HUMIDITY, 0 );
 
 void display_logo (){
@@ -243,17 +245,17 @@ static void ssd1306_task(void *pvParameters)
                 case 1:
                     sprintf(mode_string, "HEAT");
                     break;
-                case 2:
-                    sprintf(mode_string, "COOL");
-                    break;
-                case 3:
-                    sprintf(mode_string, "AUTO");
-                    break;
+              //  case 2:
+              //      sprintf(mode_string, "COOL");
+              //      break;
+              //  case 3:
+              //      sprintf(mode_string, "AUTO");
+              //      break;
                 default:
                     sprintf(mode_string, "?   ");
             }
 
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 3, 1, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_14X28_ISO8859_1], 1, 1, target_temp_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing target temp\n");
             }
 
@@ -263,10 +265,10 @@ static void ssd1306_task(void *pvParameters)
 
             sprintf(temperature_string, "%2.1f", (float)current_temperature.value.float_value);
             sprintf(humidity_string, "%2.1f", (float)current_humidity.value.float_value);
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 18, 50 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 18, 48 , temperature_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing temperature\n");
             }
-            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 72, 50 , humidity_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
+            if (ssd1306_draw_string(&display, display_buffer, font_builtin_fonts[FONT_FACE_TERMINUS_BOLD_8X14_ISO8859_1], 72, 48 , humidity_string, OLED_COLOR_WHITE, OLED_COLOR_BLACK) < 1){
                 printf("Error printing humidity\n");
             }
 
@@ -280,12 +282,12 @@ static void ssd1306_task(void *pvParameters)
                 case 1:
                     sprintf(mode_string, "Heating");
                     break;
-                case 2:
-                    sprintf(mode_string, "Cooling");
-                    break;
-                case 3:
-                    sprintf(mode_string, "  Auto  ");
-                    break;
+//                case 2:
+//                    sprintf(mode_string, "Cooling");
+//                    break;
+//                case 3:
+//                    sprintf(mode_string, "  Auto  ");
+//                    break;
                 default:
                     sprintf(mode_string, "?   ");
             }
@@ -488,8 +490,8 @@ void up_button_callback(uint8_t gpio, void* args, const uint8_t param) {
         sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
         homekit_characteristic_notify(&target_temperature, target_temperature.value);
     }
-}
 
+}
 
 void down_button_callback(uint8_t gpio, void* args, const uint8_t param) {
 
@@ -501,6 +503,7 @@ void down_button_callback(uint8_t gpio, void* args, const uint8_t param) {
         sdk_os_timer_arm (&save_timer, SAVE_DELAY, 0 );
         homekit_characteristic_notify(&target_temperature, target_temperature.value);
     }
+
 }
 
 void set_button_callback(uint8_t gpio, void* args, const uint8_t param) {
@@ -508,23 +511,19 @@ void set_button_callback(uint8_t gpio, void* args, const uint8_t param) {
   switch_screen_on (SCREEN_DELAY); /* ensure the screen is on */
   printf("Button SET single press\n");
   {
-
-              uint8_t state = target_state.value.int_value + 1;
-   		switch (state){
-        case 1:
-            //heat
+    uint8_t state = target_state.value.int_value + 1;
+   		switch (state)
+      {
+        case 1: /* Heat */
             state = 1;
             break;
-            //cool
-        case 2:
-            state = 2;
-            break;
-            //auto
-        case 3:
-            state = 3;
-           break;
-        default:
-            //off
+//        case 2:  /* Cool */
+//            state = 2;
+//            break;
+//        case 3: /* Auto */
+//            state = 3;
+//           break;
+        default: /* Off */
             state = 0;
             break;
         }
@@ -622,10 +621,10 @@ void temperature_sensor_task(void *_args) {
 homekit_accessory_t *accessories[] = {
     HOMEKIT_ACCESSORY(.id=1, .category=homekit_accessory_category_thermostat, .services=(homekit_service_t*[]) {
         HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]) {
-            HOMEKIT_CHARACTERISTIC(NAME, "HomeKit Thermostat"),
+            &name,
             HOMEKIT_CHARACTERISTIC(MANUFACTURER, " XrustHome"),
             &serial,
-            HOMEKIT_CHARACTERISTIC(MODEL, "WiFi Thermostat"),
+            HOMEKIT_CHARACTERISTIC(MODEL, "WiFi"),
             &revision,
             HOMEKIT_CHARACTERISTIC(IDENTIFY, thermostat_identify),
             NULL
