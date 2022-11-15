@@ -30,9 +30,9 @@ GPIO used are as follows:-
   
   2 - LED 
   
-  5 - SH1106 SCL_PIN
+  5 - SH1306 SCL_PIN
   
-  4 - SH1106 SDA_PIN
+  4 - SH1306 SDA_PIN
   
   
   Online XBM redactor. https://xbm.jazzychad.net
