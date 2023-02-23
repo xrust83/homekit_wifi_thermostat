@@ -5,14 +5,15 @@ EXTRA_COMPONENTS = \
 	extras/rboot-ota \
         extras/dhcpserver \
 	extras/ssd1306 \
-	extras/fonts \
 	extras/i2c \
 	$(abspath ../components/esp-wolfssl) \
 	$(abspath ../components/esp-cjson) \
 	$(abspath ../components/esp-homekit)\
         $(abspath ../components/esp-wifi-config)\
 				$(abspath ../components/new_dht)\
+				$(abspath ../components/fonts)\
         $(abspath ../components/UDPlogger)\
+				$(abspath ../components/mdnsresponder)\
 	$(abspath ../components/esp-qrcode)\
 	$(abspath ../components/esp-adv-button)\
 	$(abspath ../components/esp-homekit-common-functions/led_codes)\
