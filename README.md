@@ -3,6 +3,8 @@
 
 # HomeKit_WiFi_Thermostat
 
+https://github.com/xrust83/homekit_wifi_thermostat/blob/master/src/5467679F-4C87-4804-B8A1-54945B27D2D0.jpeg
+
 Thermostat accessory for remote control of central heating.
 You will also need the Eve app to update the firmware, enable settings after a power outage.
 
