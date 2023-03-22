@@ -18,10 +18,10 @@
 */
 
 #define DEVICE_MANUFACTURER "XrustHome™"
-#define DEVICE_NAME "Wifi-Thermostat"
+#define DEVICE_NAME "Thermostat"
 #define DEVICE_MODEL "WiFi"
 #define DEVICE_SERIAL "12345678"
-#define FW_VERSION "0.8.14"
+#define FW_VERSION "0.8.28"
 
 #include <stdio.h>
 #include <espressif/esp_wifi.h>
@@ -56,16 +56,17 @@
 #define TEMP_DIFF_NOTIFY_TRIGGER 0.1
 #define HUMIDITY_DIFF_TRIGGER_VALUE 0.1
 #define TEMP_DIFF_TRIGGER 0.1
-#define UP_BUTTON_GPIO 12
+#define UP_BUTTON_GPIO 10
 #define DOWN_BUTTON_GPIO 13
 #define SET_BUTTON_GPIO 0
 #define HEATER_LED_PIN 15
+#define COOLER_LED_PIN 12
 //#define COOLER_LED_PIN x
 #define LED_GPIO 2
 #define QRCODE_VERSION 2
 uint16_t debounce_time = 60;
 
-int led_off_value=1; /* global varibale to support LEDs set to 0 where the LED is connected to GND, 1 where +3.3v */
+int led_off_value = 1; /* global varibale to support LEDs set to 0 where the LED is connected to GND, 1 where +3.3v */
 const int status_led_gpio = 2; /*set the gloabl variable for the led to be sued for showing status */
 
 // add this section to make your device OTA capable
@@ -136,9 +137,18 @@ void heaterOff() {
     gpio_write(HEATER_LED_PIN, false);
 }
 
+void coolerOn() {
+    gpio_write(COOLER_LED_PIN, true);
+}
+
+void coolerOff() {
+    gpio_write(COOLER_LED_PIN, false);
+}
+
 // I2C
 
 ETSTimer screen_off_timer;
+
 #include <ota-api.h>
 homekit_characteristic_t wifi_reset   = HOMEKIT_CHARACTERISTIC_(CUSTOM_WIFI_RESET, false, .setter=wifi_reset_set);
 homekit_characteristic_t wifi_check_interval   = HOMEKIT_CHARACTERISTIC_(CUSTOM_WIFI_CHECK_INTERVAL, 10, .setter=wifi_check_interval_set);
@@ -253,7 +263,7 @@ static void ssd1306_task(void *pvParameters)
                     break;
                 case 3:
                     sprintf(mode_string, "%c%c", 0xC7, 0xC8);
-                    sprintf(temp_string, "%2.1f-%2.1f%c", (float)heating_threshold.value.float_value, (float)cooling_threshold.value.float_value, 0xC0);
+                    sprintf(temp_string, "%2.0f-%2.0f%c ", (float)heating_threshold.value.float_value, (float)cooling_threshold.value.float_value, 0xC0);
                     break;
                 default:
                     sprintf(mode_string, "? ");
@@ -542,6 +552,7 @@ void process_setting_update() {
             switch_screen_on (SCREEN_DELAY);
 
             heaterOn();
+            coolerOff();
         }
     } else if ((state == 2 && current_temperature.value.float_value > target_temperature.value.float_value) ||
             (state == 3 && current_temperature.value.float_value > cooling_threshold.value.float_value)) {
@@ -552,6 +563,7 @@ void process_setting_update() {
             switch_screen_on (SCREEN_DELAY);
 
             heaterOff();
+            coolerOn();
         }
     } else {
         if (current_state.value.int_value != 0) {
@@ -561,6 +573,7 @@ void process_setting_update() {
             switch_screen_on (SCREEN_DELAY);
 
             heaterOff();
+            coolerOff();
         }
     }
     printf("%s: End - Free Heap %d\n",__func__,  xPortGetFreeHeapSize());
@@ -574,6 +587,7 @@ void temperature_sensor_task(void *_args) {
     bool success = false;
 
     gpio_enable(HEATER_LED_PIN, GPIO_OUTPUT);
+    gpio_enable(COOLER_LED_PIN, GPIO_OUTPUT);
 
     while (1) {
         success = dht_read_float_data(
@@ -587,6 +601,7 @@ void temperature_sensor_task(void *_args) {
             printf("%s: Got readings: temperature %2.1f, humidity %2.1f, Stack Words left: %lu\n", __func__, temperature_value, humidity_value,  uxTaskGetStackHighWaterMark(NULL)/4);
             temp_diff = abs (current_temperature.value.float_value - temperature_value);
             humidity_diff = abs (current_humidity.value.float_value - humidity_value);
+
             if (temperature_value >= current_temperature.min_value[0] && temperature_value <= current_temperature.max_value[0] && temp_diff >= TEMP_DIFF_NOTIFY_TRIGGER)
             {
                 printf ("%s: Notify Temperature updated\n", __func__);
@@ -615,11 +630,11 @@ void temperature_sensor_task(void *_args) {
 homekit_accessory_t *accessories[] = {
     HOMEKIT_ACCESSORY(.id=1, .category=homekit_accessory_category_thermostat, .services=(homekit_service_t*[]) {
         HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]) {
-            HOMEKIT_CHARACTERISTIC(NAME, "Thermostat"),
+            &name,
             HOMEKIT_CHARACTERISTIC(MANUFACTURER, "XrustHome™"),
             &serial,
             HOMEKIT_CHARACTERISTIC(MODEL, " WiFi"),
-            HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "0.8.17"),
+            HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "0.8.28"),
             HOMEKIT_CHARACTERISTIC(IDENTIFY, thermostat_identify),
             NULL
         }),
@@ -730,7 +745,7 @@ void save_characteristics ( ){
    if ( preserve_state.value.bool_value == true){
         printf ("%s:Preserving state\n", __func__);
         save_characteristic_to_flash (&target_temperature, target_temperature.value);
-        save_characteristic_to_flash (&current_state, current_state.value);
+        save_characteristic_to_flash (&target_state, target_state.value);
         save_characteristic_to_flash (&wifi_check_interval, wifi_check_interval.value);
    } else {
         printf ("%s:Not preserving state\n", __func__);
@@ -751,7 +766,7 @@ void load_settings_from_flash (){
 homekit_server_config_t config = {
     .accessories = accessories,
     .password = "021-82-017",
-    .setupId = "1234",
+    .setupId = "XRST",
     .on_event = on_homekit_event
 };
 
