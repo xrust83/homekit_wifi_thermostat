@@ -5,8 +5,8 @@
 
 <p align="center"><img width="600" src="https://github.com/xrust83/homekit_wifi_thermostat/blob/master/src/08D4D200-5688-41F1-91C0-7996D3E3F58B.jpeg"></p>
 <p align="center"><img width="600" src="https://github.com/xrust83/homekit_wifi_thermostat/blob/master/src/5467679F-4C87-4804-B8A1-54945B27D2D0.jpeg"></p>
-<p align="center"><img width="600" src="https://github.com/xrust83/homekit_wifi_thermostat/blob/master/src/A9593DC6-FC35-4300-96FD-0EE5672E0FAC.jpeg"></p>
 <p align="center"><img width="600" src="https://github.com/xrust83/homekit_wifi_thermostat/blob/master/src/E48C8F00-A029-4006-9528-29CF35A0B7F8.jpeg"></p>
+<p align="center"><img width="600" src="https://github.com/xrust83/homekit_wifi_thermostat/blob/master/src/A9593DC6-FC35-4300-96FD-0EE5672E0FAC.jpeg"></p>
 
 Thermostat accessory for remote control of central heating.
 You will also need the Eve app to update the firmware, enable settings after a power outage.
