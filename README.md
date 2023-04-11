@@ -21,7 +21,7 @@ The screen will light up during the initial setup and when the power is turned o
 
 GPIO used are as follows:- 
 
-  14 - Si7021
+  14 - Si7021 Sonoff version
 
   13 - Temperature Up (button connect to ground)
 
