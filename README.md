@@ -23,11 +23,11 @@ GPIO used are as follows:-
 
   14 - Si7021
 
-  10 - Temperature Up (button connect to ground)
+  13 - Temperature Up (button connect to ground)
 
-  13 - Temperature Down (button conected to ground) 
+  0 - Temperature Down (button conected to ground) 
   
-  0 - Set (button conected to ground)
+  10 - Set (button conected to ground)
   
   15 - Heating LED (conected to ground, resistor 1 kOm) 
   
