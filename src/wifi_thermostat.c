@@ -21,7 +21,7 @@
 #define DEVICE_NAME "Thermostat"
 #define DEVICE_MODEL "WiFi"
 #define DEVICE_SERIAL "12345678"
-#define FW_VERSION "0.8.28"
+#define FW_VERSION "0.8.32"
 
 #include <stdio.h>
 #include <espressif/esp_wifi.h>
@@ -56,9 +56,9 @@
 #define TEMP_DIFF_NOTIFY_TRIGGER 0.1
 #define HUMIDITY_DIFF_TRIGGER_VALUE 0.1
 #define TEMP_DIFF_TRIGGER 0.1
-#define UP_BUTTON_GPIO 10
-#define DOWN_BUTTON_GPIO 13
-#define SET_BUTTON_GPIO 0
+#define UP_BUTTON_GPIO 13
+#define DOWN_BUTTON_GPIO 0
+#define SET_BUTTON_GPIO 10
 #define HEATER_LED_PIN 15
 #define COOLER_LED_PIN 12
 //#define COOLER_LED_PIN x
@@ -74,6 +74,8 @@ const int status_led_gpio = 2; /*set the gloabl variable for the led to be sued 
 // it can be used in Eve, which will show it, where Home does not
 // and apply the four other parameters in the accessories_information section
 
+#include "ota-api.h"
+
 /// I2C
 
 /* Remove this line if your display connected by SPI */
@@ -84,6 +86,7 @@ const int status_led_gpio = 2; /*set the gloabl variable for the led to be sued 
 #endif
 
 #include "fonts/fonts.h"
+
 
 
 /* Change this according to you schematics and display size */
@@ -634,7 +637,7 @@ homekit_accessory_t *accessories[] = {
             HOMEKIT_CHARACTERISTIC(MANUFACTURER, "XrustHome™"),
             &serial,
             HOMEKIT_CHARACTERISTIC(MODEL, " WiFi"),
-            HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "0.8.28"),
+            HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "0.8.32"),
             HOMEKIT_CHARACTERISTIC(IDENTIFY, thermostat_identify),
             NULL
         }),
@@ -684,9 +687,6 @@ void thermostat_init() {
 
     adv_button_create(SET_BUTTON_GPIO, true, false);
     adv_button_register_callback_fn(SET_BUTTON_GPIO, set_button_callback, SINGLEPRESS_TYPE, NULL, 0);
-
-    adv_button_create(SET_BUTTON_GPIO, true, false);
-    adv_button_register_callback_fn(SET_BUTTON_GPIO, set_button_callback, VERYLONGPRESS_TYPE, NULL, 0);
 
     printf("%s: Buttons Created, Freep Heap=%d\n", __func__, xPortGetFreeHeapSize());
 
@@ -770,9 +770,24 @@ homekit_server_config_t config = {
     .on_event = on_homekit_event
 };
 
+void create_name (){
+    uint8_t macaddr[6];
+    sdk_wifi_get_macaddr(STATION_IF, macaddr);
+
+    int name_len = snprintf(NULL, 0, "Thermostat-%02X%02X%02X",
+                            macaddr[3], macaddr[4], macaddr[5]);
+    char *name_value = malloc(name_len+1);
+    snprintf(name_value, name_len+1, "Thermostat-%02X%02X%02X",
+             macaddr[3], macaddr[4], macaddr[5]);
+
+    name.value = HOMEKIT_STRING(name_value);
+}
+
 void user_init(void) {
 
    sdk_os_timer_setfn(&screen_off_timer, screen_off_timer_fn, NULL);
+
+   create_name ();
 
    standard_init (&name, &manufacturer, &model, &serial, &revision);
 
@@ -783,6 +798,7 @@ void user_init(void) {
    screen_init();
    printf ("Screen init called\n");
 
+   //wifi_config_init(DEVICE_NAME, NULL, on_wifi_ready);
    wifi_config_init(DEVICE_NAME, NULL, on_wifi_ready);
 
 }
