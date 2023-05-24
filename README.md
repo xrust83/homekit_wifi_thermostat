@@ -41,7 +41,3 @@ GPIO used are as follows:-
   
   
   Online XBM redactor. https://xbm.jazzychad.net
-  
-|Vendor|Model|Chip|Functions|GPIOs and notes| MEPLHAA script |
-|:-----|:----|:--:|:--------|:--------------|:---|
-|Bawoo| RGBW Lightbulb|ESP8266|Color lightbulb||`{"c":{"io":[[[14,12,13],7],[[4],7,0,0,2]]},"a":[{"t":30,"g":[14,12,13,4],"fa":[1,1,1,4],"mp":0.85}]}`|
